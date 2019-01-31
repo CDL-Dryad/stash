@@ -1,16 +1,25 @@
 <% # local: identifier %>
 <div class="o-admin-dialog">
+  <%#= form_tag(curation_status_change_path(identifier.id), method: :post, remote: true) do -%>
+  <%= form_for :curation_activity,
+        url: curation_status_change_path(@curation_activity.identifier_id),
+        method: :post,
+        remote: true do |f| %>
 
-  <%= form_tag(curation_status_change_path(identifier.id), method: :post, remote: true) do -%>
     <div class="c-input">
-      <%= select_tag(:status, options_for_select( status_select, identifier&.identifier_state&.current_curation_status) ) %>
+      <%= f.select :status, options_for_select(status_select, @curation_activity.status) %>
+      <%#= select_tag(:status, options_for_select( status_select, latest_resource&.curation_status) ) %>
     </div>
     <div class="c-input">
       <label class="c-input__label">Notes</label>
-      <%= text_area_tag(:note, nil, class: 'c-input__textarea') %>
+      <%= f.text_area :note, class: 'c-input__textarea' %>
+      <%#= text_area_tag(:note, nil, class: 'c-input__textarea') %>
     </div>
+    <%= f.hidden_field :identifier_id %>
+    <%= f.hidden_field :resource_id %>
     <%= submit_tag 'Submit' %>
     <%= button_tag 'Cancel', type: 'button', id: 'cancel_dialog' %>
 
   <% end %>
+
 </div>
