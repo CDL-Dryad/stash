@@ -1,6 +1,7 @@
 module StashEngine
   class CurationActivity < ActiveRecord::Base
     belongs_to :stash_identifier, class_name: 'StashEngine::Identifier', foreign_key: 'identifier_id'
+    belongs_to :resource
     belongs_to :user, class_name: 'StashEngine::User', foreign_key: 'user_id'
     validates :status, inclusion: { in: ['Unsubmitted',
                                          'Submitted',
@@ -14,15 +15,13 @@ module StashEngine
                                          'Versioned'],
                                     message: '%{value} is not a valid status' }
     validates :status, presence: true
-    after_create :update_identifier_state, :submit_to_datacite
-    after_update :update_identifier_state, :submit_to_datacite
+    after_create :submit_to_datacite
+    after_update :submit_to_datacite
 
     def self.curation_status(my_stash_id)
-      curation_activities = CurationActivity.where(stash_identifier: my_stash_id).order(updated_at: :desc)
-      curation_activities.each do |activity|
-        return activity.status unless activity.status == 'Status Unchanged'
-      end
-      @curation_status = 'Unsubmitted'
+      identifier = Identifier.find_by(id: my_stash_id)
+      ver = identifier&.latest_resource
+      ver.present? ? ver.latest_curation_status.status : "Unsubmitted"
     end
 
     def as_json(*)
@@ -46,13 +45,6 @@ module StashEngine
     end
 
     private
-
-    def update_identifier_state
-      return if status == 'Status Unchanged'
-      return if stash_identifier.nil?
-      return if stash_identifier.identifier_state.nil?
-      stash_identifier.identifier_state.update_identifier_state(self)
-    end
 
     # rubocop:disable Metrics/CyclomaticComplexity
     def should_update_doi?

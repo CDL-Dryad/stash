@@ -37,5 +37,42 @@ namespace :identifiers do
       se_identifier.update(license_id: license)
     end
   end
+
+  desc "remove orphaned curation activities"
+  task remove_orphaned_curation_activity: :environment do
+    StashEngine::CurationActivity.all.each do |ca|
+      if StashEngine::Identifier.where(id: ca.identifier_id).empty?
+        p "Removing orphaned curation_activity: #{ca.inspect}"
+        ca.destroy
+      end
+    end
+  end
+
+  desc "update resource_id on curation_activities"
+  task add_resource_ids_to_curation_activities: :environment do
+    # Set the resource_id on all existing curation_activities
+    StashEngine::CurationActivity.all.each do |ca|
+      i = StashEngine::Identifier.find(ca.identifier_id)
+      p "Updating CurationActivity #{ca.id} with resource_id=#{i.latest_resource&.id}"
+      ca.update(resource_id: i.latest_resource&.id) unless ca.resource_id.present?
+    end
+    # Add a record to curation_activities for each Resource that does not have one
+    StashEngine::Identifier.includes(resources: :curation_activities).all.each do |i|
+      i.resources.each do |r|
+        if r.curation_activities.empty?
+          status = r.submitted? ? 'Submitted' : 'Unsubmitted'
+          p "Initializing CurationActivity for Resource #{r.id} - #{status}"
+
+          StashEngine::CurationActivity.create(
+            resource_id: r.id,
+            identifier_id: i.id,
+            user_id: r.user_id,
+            note: 'Initialized',
+            status: status
+          )
+        end
+      end
+    end
+  end
 end
 # rubocop:enable Metrics/BlockLength

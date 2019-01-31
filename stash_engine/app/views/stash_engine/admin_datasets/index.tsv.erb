@@ -3,11 +3,11 @@
 <%
     latest_resource = i&.latest_resource
     row = [ latest_resource&.title || '[no title set]',
-            i&.identifier_state&.current_curation_status,
+            latest_resource&.latest_curation_status.status,
             latest_resource&.user&.name,
             i.identifier,
-            formatted_datetime(i&.identifier_state&.curation_activity&.updated_at),
-            i&.identifier_state&.curation_activity&.user&.name,
+            formatted_datetime(latest_resource&.latest_curation_status&.updated_at),
+            latest_resource&.latest_curation_status&.user&.name,
             i.storage_size,
             "My last modified"
     ]

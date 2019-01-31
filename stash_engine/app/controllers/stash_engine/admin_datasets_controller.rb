@@ -26,7 +26,12 @@ module StashEngine
     # Unobtrusive Javascript (UJS) to do AJAX by running javascript
     def status_popup
       respond_to do |format|
-        @identifier = Identifier.find(params[:id])
+        identifier = Identifier.includes(:resources).find(params[:id])
+        @curation_activity = StashEngine::CurationActivity.new(
+          identifier_id: identifier.id,
+          resource_id: identifier.latest_resource.id,
+          status: identifier.latest_resource.latest_curation_status
+        )
         format.js
       end
     end
@@ -58,7 +63,7 @@ module StashEngine
       created_at = SortableTable::SortColumnDefinition.new('created_at')
       sort_table = SortableTable::SortTable.new([created_at])
       @sort_column = sort_table.sort_column(params[:sort], params[:direction])
-      @curation_activities = @identifier.curation_activities.order(@sort_column.order)
+      @curation_activities = @identifier.latest_resource.curation_activities.order(@sort_column.order)
       @internal_data = InternalDatum.where(identifier_id: @identifier.id)
     end
 
@@ -79,8 +84,8 @@ module StashEngine
       title_sort = SortableTable::SortColumnCustomDefinition.new('title', asc: 'stash_engine_resources.title asc',
                                                                           desc: 'stash_engine_resources.title desc')
       status_sort = SortableTable::SortColumnCustomDefinition.new('status',
-                                                                  asc: 'stash_engine_identifier_states.current_curation_status asc',
-                                                                  desc: 'stash_engine_identifier_states.current_curation_status desc')
+                                                                  asc: 'stash_engine_curation_activities.status asc',
+                                                                  desc: 'stash_engine_curation_activities.status desc')
       author_sort = SortableTable::SortColumnCustomDefinition.new('author', asc: 'user1.last_name asc, user1.first_name asc',
                                                                             desc: 'user1.last_name desc, user1.first_name desc')
       doi_sort = SortableTable::SortColumnCustomDefinition.new('doi', asc: 'stash_engine_identifiers.identifier asc',
@@ -113,17 +118,15 @@ module StashEngine
     def base_table_join
       # the following simpler ActiveRecord works, but then sorting becomes ambiguous because user joined twice
       # also the joins aren't quite right because of the way itentifier state is set up and the associations
-      # Identifier.joins([{ latest_resource: :user }, { identifier_state: { curation_activity: :user } }])
+      # Identifier.joins([{ latest_resource: :user }, { latest_resource: { curation_activity: :user } }])
 
       # using these table aliases user1, user2 for the two different users
       Identifier.joins('INNER JOIN `stash_engine_resources` ' \
         'ON `stash_engine_identifiers`.`latest_resource_id` = `stash_engine_resources`.`id` ' \
         'INNER JOIN `stash_engine_users` user1 ' \
         'ON `stash_engine_resources`.`user_id` = user1.`id` ' \
-        'INNER JOIN `stash_engine_identifier_states` ' \
-        'ON `stash_engine_identifiers`.`id` = `stash_engine_identifier_states`.`identifier_id` ' \
         'INNER JOIN `stash_engine_curation_activities` ' \
-        'ON `stash_engine_identifier_states`.`curation_activity_id` = `stash_engine_curation_activities`.`id` ' \
+        'ON `stash_engine_resources`.`id` = `stash_engine_curation_activities`.`resource_id` ' \
         'LEFT JOIN `stash_engine_users` user2 ' \
         'ON `stash_engine_curation_activities`.`user_id` = user2.`id`')
     end
@@ -133,7 +136,7 @@ module StashEngine
         query_obj = query_obj.where('stash_engine_resources.tenant_id = ?', params[:tenant])
       end
       if CURATION_STATUSES.include?(params[:curation_status])
-        query_obj = query_obj.where('stash_engine_identifier_states.current_curation_status = ?', params[:curation_status])
+        query_obj = query_obj.where('stash_engine_curation_activities.status = ?', params[:curation_status])
       end
       query_obj
     end

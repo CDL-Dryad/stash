@@ -973,5 +973,78 @@ module StashEngine
         end
       end
     end
+
+    describe 'curation state' do
+
+      before(:each) do
+        @identifier = Identifier.create(
+          identifier: 'cat/dog',
+          identifier_type: 'DOI'
+        )
+        @resource = Resource.create(
+          user_id: @user.id,
+          identifier_id: @identifier.id,
+          current_editor_id: @user.id + 1,
+          tenant_id: 'ucop'
+        )
+      end
+
+      it 'gets initialized to "Unsubmitted" for a new record' do
+        expect(@resource.curation_activities.empty?).to eql(false)
+        expect(@resource.latest_curation_status.status).to eql("Unsubmitted")
+      end
+
+      it 'gets initialized to "Submitted" when Merrit state = "submitted"' do
+        @resource.current_state = "submitted"
+        @resource.reload
+        expect(@resource.current_state).to eql("submitted")
+        expect(@resource.latest_curation_status.status).to eql("Submitted")
+      end
+
+      it 'is curatable if Merrit status is "submitted"' do
+        @resource.current_state = "submitted"
+        expect(@resource.curatable?).to eql(true)
+      end
+
+      it 'is NOT curatable if Merrit status is NOT "submitted"' do
+        @resource.current_state = "processing"
+        expect(@resource.curatable?).to eql(false)
+      end
+
+      it 'curation_status returns "Unsubmitted" when Merrit state is not submitted' do
+        expect(@resource.latest_curation_status.status).to eql("Unsubmitted")
+        @resource.current_state = "in_progress"
+        expect(@resource.latest_curation_status.status).to eql("Unsubmitted")
+        @resource.current_state = "processing"
+        expect(@resource.latest_curation_status.status).to eql("Unsubmitted")
+        @resource.current_state = "error"
+        expect(@resource.latest_curation_status.status).to eql("Unsubmitted")
+      end
+
+      it 'curation_status ignores "Status Unchanged"' do
+        @resource.current_state = "submitted"
+        StashEngine::CurationActivity.create(
+          identifier_id: @identifier.id,
+          resource_id: @resource.id,
+          status: 'Status Unchanged'
+        )
+        @resource.reload
+        expect(@resource.latest_curation_status.status).to eql("Submitted")
+      end
+
+      it 'curation_status returns the latest status' do
+        @resource.current_state = "submitted"
+        statuses = ["Private for Peer Review", "Curation"]
+        statuses.each do |status|
+          StashEngine::CurationActivity.create(
+            identifier_id: @identifier.id,
+            resource_id: @resource.id,
+            status: status
+          )
+        end
+        @resource.reload
+        expect(@resource.latest_curation_status.status).to eql(statuses.last)
+      end
+    end
   end
 end

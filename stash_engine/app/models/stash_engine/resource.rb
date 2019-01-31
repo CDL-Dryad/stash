@@ -6,6 +6,7 @@ module StashEngine
     has_many :authors, class_name: 'StashEngine::Author', dependent: :destroy
     has_many :file_uploads, class_name: 'StashEngine::FileUpload', dependent: :destroy
     has_many :edit_histories, class_name: 'StashEngine::EditHistory'
+    has_many :curation_activities, class_name: 'StashEngine::CurationActivity'
     has_one :stash_version, class_name: 'StashEngine::Version', dependent: :destroy
     belongs_to :identifier, class_name: 'StashEngine::Identifier', foreign_key: 'identifier_id'
     has_one :embargo, class_name: 'StashEngine::Embargo', dependent: :destroy
@@ -49,7 +50,8 @@ module StashEngine
     # Callbacks
 
     def init_state_and_version
-      init_state
+      init_merrit_state
+      init_curation_status
       init_version
       save
     end
@@ -84,7 +86,7 @@ module StashEngine
     def ensure_state_and_version
       return if stash_version && current_resource_state_id
       init_version unless stash_version
-      init_state unless current_resource_state_id
+      init_merrit_state unless current_resource_state_id
       save
     end
     # We want to disable this when we don't need it since it really kills performance for finding a long
@@ -229,7 +231,7 @@ module StashEngine
     end
 
     # ------------------------------------------------------------
-    # Current resource state
+    # Current Merrit state
 
     def submitted?
       current_state == 'submitted'
@@ -254,12 +256,45 @@ module StashEngine
       raise "current_resource_state not initialized for resource #{id}" unless my_state
       my_state.resource_state = value
       my_state.save
+      if value == "submitted"
+        CurationActivity.create(
+          status: 'Submitted',
+          resource: self,
+          user_id: user_id,
+          identifier_id: identifier_id
+        )
+      end
     end
 
-    def init_state
+    def init_merrit_state
       self.current_resource_state_id = ResourceState.create(resource_id: id, resource_state: 'in_progress', user_id: user_id).id
     end
-    private :init_state
+    private :init_merrit_state
+
+    # ------------------------------------------------------------
+    # Current Curation state
+
+    def curatable?
+      # Version is not curatable until it has reached the Merrit 'submitted' state
+      submitted?
+    end
+
+    def latest_curation_status
+      latest = curation_activities
+                    .where.not(status: 'Status Unchanged')
+                    .order(id: :desc)
+                    .first
+    end
+
+    def init_curation_status
+      CurationActivity.create(
+        status: 'Unsubmitted',
+        resource: self,
+        user_id: user_id,
+        identifier_id: identifier_id
+      )
+    end
+    private :init_curation_status
 
     # ------------------------------------------------------------
     # Identifiers
