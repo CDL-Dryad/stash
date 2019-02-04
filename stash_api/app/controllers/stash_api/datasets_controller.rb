@@ -42,6 +42,7 @@ module StashApi
     end
 
     # rubocop:disable Metrics/MethodLength
+    # rubocop:disable Metrics/AbcSize
     # get /datasets
     def index
       # if a publicationISSN is specified, we want to make sure that we're only working with those:
@@ -57,16 +58,14 @@ module StashApi
       end
 
       # now, if a curationStatus is specified, narrow down the previous result.
-      unless params['curationStatus'].nil?
-        ds_query = ds_query
-          .joins('LEFT JOIN stash_engine_identifier_states ON stash_engine_identifiers.id = stash_engine_identifier_states.identifier_id')
-          .where('stash_engine_identifier_states.current_curation_status': params['curationStatus'])
-      end
+      ds_query = ds_query.latest_resource.curation_activities.where(status: params['curationStatus']) if params['curationStatus'].present?
+
       @datasets = paged_datasets(ds_query)
       respond_to do |format|
         format.json { render json: @datasets }
       end
     end
+    # rubocop:enable Metrics/AbcSize
     # rubocop:enable Metrics/MethodLength
 
     # we are using PATCH only to update the versionStatus=submitted

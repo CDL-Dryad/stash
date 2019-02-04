@@ -106,7 +106,7 @@ module StashApi
 
       it 'shows Submitted curationStatus' do
         @c_a = create(:curation_activity)
-        @c_a.update(identifier_id: @identifier.id)
+        @c_a.update(identifier_id: @identifier.id, resource_id: @identifier.resources.first.id)
         @dataset = Dataset.new(identifier: @identifier.to_s)
         @metadata = @dataset.metadata
         expect(@metadata[:curationStatus]).to eq('Submitted')
