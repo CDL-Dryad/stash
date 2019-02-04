@@ -21,7 +21,7 @@ module StashEngine
     def self.curation_status(my_stash_id)
       identifier = Identifier.find_by(id: my_stash_id)
       ver = identifier&.latest_resource
-      ver.present? ? ver.latest_curation_status.status : "Unsubmitted"
+      ver.present? ? ver.latest_curation_status.status : 'Unsubmitted'
     end
 
     def as_json(*)
