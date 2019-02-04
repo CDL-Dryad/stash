@@ -20,6 +20,8 @@ module StashEngine
     # A special action for changing curation status from ajax and admin/curator area, creates new status
     # in list for identifier, which is the ID that is passed in.  It does ajax mumbo-jumbo for admin area.
     # this isn't RESTful
+    # Dumb rubocop complainging because lots of lines since create split across lines.
+    # rubocop:disable Metrics/MethodLength
     def status_change
       respond_to do |format|
         format.js do
@@ -33,8 +35,10 @@ module StashEngine
         end
       end
     end
+    # rubocop:enable Metrics/MethodLength
 
     private
+
     def curation_activity_params
       params.require(:curation_activity).permit(
         :identifier_id,

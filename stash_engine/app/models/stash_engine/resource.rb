@@ -250,21 +250,22 @@ module StashEngine
       current_resource_state && current_resource_state.resource_state
     end
 
+    # rubocop:disable Metrics/MethodLength
     def current_state=(value)
       return if value == current_state
       my_state = current_resource_state
       raise "current_resource_state not initialized for resource #{id}" unless my_state
       my_state.resource_state = value
       my_state.save
-      if value == "submitted"
-        CurationActivity.create(
-          status: 'Submitted',
-          resource: self,
-          user_id: user_id,
-          identifier_id: identifier_id
-        )
-      end
+      return unless value == 'submitted'
+      CurationActivity.create(
+        status: 'Submitted',
+        resource: self,
+        user_id: user_id,
+        identifier_id: identifier_id
+      )
     end
+    # rubocop:enable Metrics/MethodLength
 
     def init_merrit_state
       self.current_resource_state_id = ResourceState.create(resource_id: id, resource_state: 'in_progress', user_id: user_id).id
@@ -280,10 +281,7 @@ module StashEngine
     end
 
     def latest_curation_status
-      latest = curation_activities
-                    .where.not(status: 'Status Unchanged')
-                    .order(id: :desc)
-                    .first
+      curation_activities.where.not(status: 'Status Unchanged').order(id: :desc).first
     end
 
     def init_curation_status
