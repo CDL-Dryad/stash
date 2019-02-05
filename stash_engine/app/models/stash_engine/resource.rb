@@ -73,6 +73,7 @@ module StashEngine
     end
 
     def update_search_words
+      return if identifier.blank?
       identifier&.update_search_words! if title_changed? # this method is some activerecord magic
     end
 

@@ -11,7 +11,7 @@ module StashEngine
 
     # has_many :counter_citations, class_name: 'StashEngine::CounterCitation', dependent: :destroy
     # before_create :build_associations
-    after_save :update_search_words!, unless: :search_words
+    # after_save :update_search_words! #, unless: Proc.new { |my_id| my_id.nil? || my_id.search_words.nil? }
 
     # used to build counter stat if needed, trickery to be sure one always exists to begin with
     # https://stackoverflow.com/questions/3808782/rails-best-practice-how-to-create-dependent-has-one-relations
@@ -121,7 +121,8 @@ module StashEngine
 
     # the search words is a special MySQL search field that concatenates the following fields required to be searched over
     # https://github.com/CDL-Dryad/dryad-product-roadmap/issues/125
-    # doi (from this model), latest_resource.title, latest_resource.authors (names, emails, orcids), dcs_descriptions of type abstract
+    # doi (from this model), latest_resource.title, latest_resource.authors (names, emails, orcids),
+    # dcs_descriptions of type abstract
     def update_search_words!
       my_string = to_s
       if latest_resource
