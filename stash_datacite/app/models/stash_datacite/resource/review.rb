@@ -58,15 +58,15 @@ module StashDatacite
       end
 
       def geolocation_points
-        @geolocation_points = GeolocationPoint.only_geo_points(@resource.id)
+        GeolocationPoint.only_geo_points(@resource.id)
       end
 
       def geolocation_boxes
-        @geolocation_boxes = GeolocationBox.only_geo_bbox(@resource.id)
+        GeolocationBox.only_geo_bbox(@resource.id)
       end
 
       def geolocation_places
-        @geolocation_places = GeolocationPlace.from_resource_id(@resource.id)
+        GeolocationPlace.from_resource_id(@resource.id)
       end
 
       def publisher
