@@ -93,7 +93,7 @@ module Stash
 
       def ror_results_to_hash(response)
         results = []
-        resp = response.parsed_response #.is_a?(String) ? JSON.parse(response.parsed_response) : response.parsed_response
+        resp = response.parsed_response
         return results unless resp['items'].is_a?(Array)
         resp['items'].each do |item|
           next unless item['id'].present? && item['name'].present?
