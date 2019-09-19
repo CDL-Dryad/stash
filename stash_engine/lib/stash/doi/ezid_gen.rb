@@ -9,13 +9,15 @@ module Stash
       # @return [String] the identifier (DOI, ARK, or URN)
       def mint_id
         if id_exists?
-          ezid_client.create_identifier(doi, status: 'reserved', profile: 'datacite')
+          # if the id_exists then just return the existing id, not sure why this would happen and it would try to be minted
+          # twice?  Maybe a race condition or bad logic?
+          @resource&.identifier&.to_s # this returns the text representation like 'doi:99999/fkkjgkj.dkjwe'
         else
           ezid_response = ezid_client.mint_identifier(shoulder, status: 'reserved', profile: 'datacite')
           ezid_response.id
         end
       rescue Ezid::Error => e
-        err = EzidError.new("Ezid failed to mint an id (#{e.message})")
+        err = EzidError.new("Ezid failed to mint an id for shoulder #{shoulder} (#{e.message})")
         err.set_backtrace(e.backtrace) if e.backtrace.present?
         raise err
       end
