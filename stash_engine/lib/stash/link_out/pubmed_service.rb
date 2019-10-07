@@ -23,9 +23,9 @@ module LinkOut
       @pubmed_api_query_suffix = '[doi]'
 
       @ftp = APP_CONFIG.link_out.pubmed
-      @root_url = Rails.application.routes.url_helpers.root_url.freeze
+      @root_url = root_url_ssl
 
-      @schema = 'http://www.ncbi.nlm.nih.gov/entrez/linkout/doc/LinkOut.dtd'
+      @schema = 'https://www.ncbi.nlm.nih.gov/projects/linkout/doc/LinkOut.dtd'
       @links_file = 'pubmedlinkout.xml'
       @provider_file = 'providerinfo.xml'
     end
@@ -42,6 +42,8 @@ module LinkOut
     def generate_files!
       p "  created #{generate_provider_file!}"
       p "  created #{generate_links_file!}"
+      p '  pushing files to PubMed FTP server'
+      publish_files!
     end
 
     def validate_files!
@@ -52,13 +54,14 @@ module LinkOut
     end
 
     def publish_files!
-      p "    TODO: sending files to #{@ftp.ftp_host}"
-      # ftp = Net::FTP.new(@ftp.ftp_host)
-      # ftp.login(@ftp.ftp_username, @ftp.ftp_password)
-      # ftp.chdir(@ftp.ftp_dir)
-      # ftp.putbinaryfile(@provider_file)
-      # ftp.putbinaryfile(@links_file)
-      # ftp.close
+      ftp = Net::FTP.new(@ftp.ftp_host)
+      ftp.login(@ftp.ftp_username, @ftp.ftp_password)
+      ftp.chdir(@ftp.ftp_dir)
+      ftp.putbinaryfile("#{TMP_DIR}/#{@provider_file}")
+      ftp.putbinaryfile("#{TMP_DIR}/#{@links_file}")
+      ftp.close
+    rescue StandardError => se
+      p "    FTP Error: #{se.message}"
     end
 
     private
@@ -96,14 +99,14 @@ module LinkOut
             link_base: 'dryad.pubmed.',
             icon_url: "#{@root_url}images/DryadLogo-Button.png",
             callback_base: "#{@root_url}discover?",
-            callback_rule: 'query=%22&lo.doi;%22',
+            callback_rule: 'query=&lo.doi;',
             subject_type: 'supplemental materials',
             identifiers: identifiers
           }
         ), nil, 'UTF-8')
 
       doc.create_internal_subset('LinkSet', '-//NLM//DTD LinkOut 1.0//EN', @schema.split('/').last)
-      File.write("#{TMP_DIR}/#{@links_file}", doc.to_xml)
+      File.write("#{TMP_DIR}/#{@links_file}", unencode_callback_ampersand(doc.to_xml))
       "#{TMP_DIR}/#{@links_file}"
     end
 
@@ -132,6 +135,15 @@ module LinkOut
     def extract_pubmed_id(xml)
       doc = Nokogiri::XML(xml)
       doc.xpath('eSearchResult//IdList//Id').first&.text
+    end
+
+    # Nokogiri and other libraries encode ampersands `&amp;`
+    # https://github.com/sparklemotion/nokogiri/issues/1127
+    #
+    # The PubMed Linkout system though wants it to be unencoded `&` which technically makes the
+    # XML document invalid so we need to swap the `&` for `&amp;` after doing our Nokogiri `doc.to_xml`
+    def unencode_callback_ampersand(text)
+      text.gsub(/query\=%22&amp;lo\.doi;%22/, 'query=%22&lo.doi;%22')
     end
 
   end

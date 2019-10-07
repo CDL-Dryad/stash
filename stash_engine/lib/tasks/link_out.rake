@@ -51,19 +51,20 @@ namespace :link_out do
     p 'Publishing LinkOut files'
     p '  processing Pubmed files:'
     pubmed_service = LinkOut::PubmedService.new
-    pubmed_service.publish_files! if pubmed_service.validate_files!
+    pubmed_service.publish_files! # if pubmed_service.validate_files!
 
     p '  processing GenBank files'
     pubmed_sequence_service = LinkOut::PubmedSequenceService.new
-    pubmed_sequence_service.publish_files! if pubmed_sequence_service.validate_files!
+    pubmed_sequence_service.publish_files! # if pubmed_sequence_service.validate_files!
 
     p '  processing LabsLink files'
     labslink_service = LinkOut::LabslinkService.new
-    labslink_service.publish_files! if labslink_service.validate_files!
+    labslink_service.publish_files! # if labslink_service.validate_files!
   end
 
   desc 'Seed existing datasets with PubMed Ids - WARNING: this will query the API for each dataset that has a isSupplementTo DOI!'
   task seed_pmids: :environment do
+    sleep(1) # The NCBI API has a threshold for how many times we can hit it
     p 'Retrieving Pubmed IDs for existing datasets'
     pubmed_service = LinkOut::PubmedService.new
     existing_pmids = StashEngine::Identifier.cited_by_pubmed.pluck(:id)
@@ -81,7 +82,6 @@ namespace :link_out do
 
       p "    found pubmedID, '#{pmid}', ... attaching it to '#{data.related_identifier.gsub('doi:', '')}' (identifier: #{data.identifier_id})"
       internal_datum.save
-      sleep(1)
     end
   end
 
@@ -93,6 +93,7 @@ namespace :link_out do
     existing_pmids = StashEngine::Identifier.cited_by_pubmed.where.not(id: existing_refs).pluck(:id)
     datum = StashEngine::InternalDatum.where(identifier_id: existing_pmids, data_type: 'pubmedID').order(created_at: :desc)
     datum.each do |data|
+      sleep(1) # The NCBI API has a threshold for how many times we can hit it
       p "  looking for genbank sequences for PubmedID #{data.value}"
       sequences = pubmed_sequence_service.lookup_genbank_sequences(data.value)
       next unless sequences.any?
@@ -103,9 +104,13 @@ namespace :link_out do
         next unless external_ref.value_changed?
 
         p "    found #{v.length} identifiers for #{k}"
-        external_ref.save
+        begin
+          external_ref.save
+        rescue StandardError => e
+          p "    ERROR: #{e.message} ... skipping update for #{data.identifier_id}"
+          next
+        end
       end
-      sleep(1) # The NCBI API has a threshold for how many times we can hit it
     end
   end
 
@@ -114,17 +119,12 @@ namespace :link_out do
     p 'Updating Solr keywords with manuscriptNumber, pubmedID or a isSupplementTo related identifier'
     types = %w[pubmedID manuscriptNumber]
 
-    StashEngine::Identifier.all.each do |identifier|
-      datum = identifier.joins(:internal_data, resource: :related_identifiers)
-        .where('(stash_engine_internal_data.data_type IN (?) AND stash_engine_internal_data.value IS NOT NULL) \
-          OR (dcs_related_identifiers.related_identifier_type = ? AND dcs_related_identifiers.relation_type = ? AND \
-              dcs_related_identifiers.related_identifier IS NOT NULL)', types, 'doi', 'issupplementto')
-
-      if datum.any?
-        identifier.update_search_words!
-        identifier.latest_resource.submit_to_solr
-      end
+    # rubocop:disable Metrics/LineLength
+    StashEngine::Identifier.joins(:internal_data).where("stash_engine_internal_data.data_type IN (?) AND stash_engine_internal_data.value IS NOT NULL AND stash_engine_internal_data.value != ''", types).each do |identifier|
+      identifier.update_search_words!
+      identifier.latest_resource.submit_to_solr
     end
+    # rubocop:enable Metrics/LineLength
   end
 
   def create_link_out_dir!

@@ -141,7 +141,14 @@ module StashEngine
                                                                             status: %w[published embargoed] })
     end
 
-    # calculates published as a published status or embargoed and past its publication date
+    scope :files_published, -> do
+      # this also depends on the publication updater to update statuses to published daily
+      joins(:curation_activities)
+        .where(stash_engine_curation_activities: { id: latest_curation_activity.values,
+                                                   status: %w[published] })
+    end
+
+    # this is METADATA published
     scope :published, -> do
       joins(:curation_activities).where('stash_engine_resources.publication_date < ?', Time.now.utc)
         .where(stash_engine_curation_activities: { id: latest_curation_activity.values,
@@ -278,6 +285,10 @@ module StashEngine
 
     def url_in_version?(url)
       file_uploads.where(url: url).where(file_state: 'created').where(status_code: 200).count > 0
+    end
+
+    def files_unchanged?
+      file_uploads.where(file_state: %w[created deleted]).count < 1
     end
 
     # ------------------------------------------------------------
@@ -549,6 +560,12 @@ module StashEngine
     # Metadata is published when the curator sets the status to published or embargoed
     def metadata_published?
       current_curation_activity.present? && (current_curation_activity.published? || current_curation_activity.embargoed?)
+    end
+
+    # this is a query for the publication updating on a cron, but putting here so we can test the query more easily
+    def self.need_publishing
+      # submitted to merritt, curation embargoed, past publication date
+      all.submitted.with_visibility(states: %w[embargoed]).where('stash_engine_resources.publication_date < ?', Time.now)
     end
 
     # -----------------------------------------------------------

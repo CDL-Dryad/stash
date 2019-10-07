@@ -10,10 +10,20 @@ module LinkOut
   module Helper
     TMP_DIR = "#{Rails.root}/tmp/link_out"
 
+    def root_url_ssl
+      Rails.application.routes.url_helpers.root_url.gsub(/^http:/, 'https:')
+    end
+
+    def request_headers
+      {
+        'User-Agent': 'datadryad.org (contact: help@datadryad.org)',
+        'Accept': 'text/xml'
+      }
+    end
+
     # Retrieve the XML from the API (e.g. lookup Pubmed ID for a given DOI)
     def get_xml_from_api(uri, query)
-      headers = { 'Accept': 'text/xml' }
-      resp = HTTParty.get(uri, query: query, headers: headers)
+      resp = HTTParty.get(uri, query: query, headers: request_headers)
       # If we received anything but a 200 then log an error and return an empty array
       raise "Unable to connect to connect to - #{@pubmed_api}?#{query}: status: #{resp.code}" if resp.code != 200
       # Return an empty array if the response did not have any results
@@ -77,15 +87,13 @@ module LinkOut
       #    17:0: ERROR: No declaration for element Base"
       #    18:0: ERROR: No declaration for element Rule"
       #    19:0: ERROR: No declaration for element SubjectType"
-      true
+      doc = Nokogiri::XML::Document.parse(File.read(xml_file))
+      dtd = Nokogiri::XML::DTD.new(doc.internal_subset.name, Nokogiri::XML::Document.parse(File.read(dtd_file)))
+      return true if dtd.validate(doc).empty?
 
-      # doc = Nokogiri::XML::Document.parse(File.read(xml_file))
-      # dtd = Nokogiri::XML::DTD.new(doc.internal_subset.name, Nokogiri::XML::Document.parse(File.read(dtd_file)))
-
-      # return true if dtd.validate(doc).empty?
-      # p "      ERROR! #{xml_file} does not conform to the XML schema defined in: #{dtd_file}:"
-      # dtd.validate(doc).each { |err| p "        #{err.to_s}" }
-      # false
+      p "      ERROR! #{xml_file} does not conform to the XML schema defined in: #{dtd_file}:"
+      dtd.validate(doc).each { |err| p "        #{err}" }
+      false
     end
 
   end
