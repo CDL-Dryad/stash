@@ -49,6 +49,7 @@ module StashEngine
 
     # Callbacks
     # ------------------------------------------
+
     # When the status is published/embargoed send to Stripe and DataCite
     after_create :submit_to_datacite, :update_solr, :submit_to_stripe, :remove_peer_review,
                  if: proc { |ca|
@@ -237,6 +238,7 @@ module StashEngine
     # ------------------------------------------
 
     def ready_for_payment?
+      resource&.identifier&.reload
       StashEngine.app&.payments&.service == 'stripe' &&
         resource&.identifier&.invoice_id.nil? &&
         (status == 'published' || status == 'embargoed')
