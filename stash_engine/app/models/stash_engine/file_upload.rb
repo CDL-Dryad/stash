@@ -8,9 +8,6 @@ module StashEngine
     include StashEngine::Concerns::ResourceUpdated
     # mount_uploader :uploader, FileUploader # it seems like maybe I don't need this since I'm doing so much manually
 
-    before_create :fix_server_temp_file_path
-    before_save :fix_server_temp_file_path
-
     scope :deleted_from_version, -> { where(file_state: :deleted) }
     scope :newly_created, -> { where("file_state = 'created' OR file_state IS NULL") }
     scope :present_files, -> { where("file_state = 'created' OR file_state IS NULL OR file_state = 'copied'") }
@@ -46,6 +43,14 @@ module StashEngine
       else
         'The given URL is invalid. Please check the URL and resubmit.'
       end
+    end
+
+    # this is to replace temp_file_path which tells where a file was saved when staged for upload by a user
+    def calc_file_path
+      return nil if file_state == 'copied' || file_state == 'deleted' # no current file to have a path for
+
+      # the uploads directory is well defined so we can calculate it and don't need to store it
+      Rails.root.join('uploads', resource_id.to_s, upload_file_name).to_s
     end
 
     # returns the latest version number in which this filename was created
@@ -136,14 +141,6 @@ module StashEngine
       # remove some extra characters that Zaru does not remove by default
       # replace spaces with underscores
       sanitized.gsub(/,|;|'|"|\u007F/, '').strip.gsub(/\s+/, '_')
-    end
-
-    # this is a hack for the servers and is only temporary until we can sort through a lot more code.
-    # It should create paths that are not destroyed by release directories changing on the server
-    # Replace the release directories with current which is always the current deploy
-    def fix_server_temp_file_path
-      return if temp_file_path.blank?
-      self.temp_file_path = temp_file_path.gsub(%r{/releases/\d+/}, '/current/')
     end
   end
 end
