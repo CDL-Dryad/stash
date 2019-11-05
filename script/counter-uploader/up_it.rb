@@ -28,23 +28,23 @@ filenames.each do |fn|
   month_info = state_hash[month_key]
 
   # all this commented out stuff is for direct upload, which keeps failing for large items.  Trying the compressed upload instead
-  # response = HTTParty.put("#{hub_base_url}/reports/#{month_info['id']}",
-  #   body: File.open(fn, 'r').read,
-  #   headers: {
-  #     'Content-Type' => 'application/json',
-  #     'Accept' => 'application/json',
-  #     'Authorization' => "Bearer #{hub_api_token}" },
-  #   timeout: 300)
+  response = HTTParty.put("#{hub_base_url}/reports/#{month_info['id']}",
+    body: File.open(fn, 'r').read,
+    headers: {
+      'Content-Type' => 'application/json',
+      'Accept' => 'application/json',
+      'Authorization' => "Bearer #{hub_api_token}" },
+    timeout: 300)
 
   # response.headers are useful
   # response.code should be 200
-  # puts response.headers
-  # puts response.code
+  puts response.headers
+  puts response.code
 
-  uploader = Uploader.new(report_id: month_info['id'], file_name: fn)
-  report_id = uploader.process
+  # uploader = Uploader.new(report_id: month_info['id'], file_name: fn)
+  # report_id = uploader.process
 
-  puts "reported id #{report_id}"
+  # puts "reported id #{report_id}"
   puts "Finished #{fn}\r\n\r\n"
 end
 
