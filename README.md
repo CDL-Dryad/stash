@@ -1,4 +1,17 @@
-# stash
+# :no_entry_sign: stash repository deprecated
+
+## :no_entry_sign: Please see [dryad-app](https://github.com/CDL-Dryad/dryad-app) repository instead of this one
+
+The [dryad-app](https://github.com/CDL-Dryad/dryad-app) repository combines
+the former [dryad](https://github.com/CDL-Dryad/dryad) and
+[stash](https://github.com/CDL-Dryad/stash) repositories into one repository.
+
+All new commits, pull requests and activity should happen against the
+[dryad-app](https://github.com/CDL-Dryad/dryad-app) repository instead of this
+repository since it consolidates what was really one application into one
+place and simplifies management and maintenance.
+
+# previous information below
 
 [![Build Status](https://travis-ci.org/CDL-Dryad/stash.svg?branch=master)](https://travis-ci.org/CDL-Dryad/stash) 
 
