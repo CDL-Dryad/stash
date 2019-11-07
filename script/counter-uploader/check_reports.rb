@@ -22,8 +22,8 @@ end.sort!
 # end
 
 reps.each do |rep|
-  subj_id = "https://api.datacite.org/reports/#{rep.split("\t")[1]}"
-  str = "https://api.datacite.org/events?source-id=datacite-usage&subj-id=#{CGI::escape(subj_id)}"
+  subj_id = "https://api.test.datacite.org/reports/#{rep.split("\t")[1]}"
+  str = "https://api.test.datacite.org/events?source-id=datacite-usage&subj-id=#{CGI::escape(subj_id)}"
   # puts str
   resp = HTTParty.get(str)
 

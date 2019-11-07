@@ -16,9 +16,8 @@ state_hash = JSON.parse(File.read('json-state/statefile.json'))
 hub_api_token = YAML.load_file('json-state/secrets.yaml')['hub_api_token']
 hub_base_url = YAML.load_file('json-state/config.yaml')['hub_base_url']
 
-hub_api_token = ''
-hub_base_url = 'https://api.datacite.org'
-upload_compressed = false
+hub_base_url = 'https://api.test.datacite.org'
+upload_compressed = true
 
 # a special hack for the uploader class
 ENV['TOKEN'] = hub_api_token
@@ -30,6 +29,12 @@ filenames.each do |fn|
   puts "Starting #{fn}"
   month_key = fn.match(/\d{4}-\d{2}/).to_s
   month_info = state_hash[month_key]
+
+  # response = HTTParty.delete("#{hub_base_url}/reports/#{month_info['id']}",
+  #                            headers: {
+  #                                'Content-Type' => 'application/json',
+  #                                'Accept' => 'application/json',
+  #                                'Authorization' => "Bearer #{hub_api_token}" })
 
   if upload_compressed
     uploader = Uploader.new(report_id: month_info['id'], file_name: fn)
@@ -44,7 +49,7 @@ filenames.each do |fn|
                                 'Authorization' => "Bearer #{hub_api_token}" },
                             timeout: 300)
     # response.headers are useful
-    # response.code should be 200
+    # response.code should be 200-ish
     puts response.headers
     puts response.code
   end

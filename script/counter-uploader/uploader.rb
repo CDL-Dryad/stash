@@ -10,10 +10,10 @@ class Uploader
       '"exceptions": [{"code": 69, "severity": "warning", "message": "Report is compressed using gzip", ' \
     '"help-url": "https://github.com/datacite/sashimi", "data": "usage data needs to be uncompressed"}]'.freeze
 
-  NORMAL_EXCEPTION = '"exceptions": [{}]'.freeze
+  # NORMAL_EXCEPTION = '"exceptions": [{}]'.freeze
+  NORMAL_EXCEPTION = /"exceptions":\s*\[\s*\{\}\s*\]/m
 
-  URI = 'https://api.datacite.org/reports'.freeze
-
+  URI = 'https://api.test.datacite.org/reports'.freeze
 
   def initialize(report_id: nil, file_name:)
     @report_id = report_id
